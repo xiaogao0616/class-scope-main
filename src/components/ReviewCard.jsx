@@ -31,6 +31,7 @@ const ReviewCard = ({ review }) => {
             </div>
             <p className="review-text">{review.text}</p>
             <div className="review-metrics">
+                {/* --- MANDATORY FIELDS (ALWAYS DISPLAY) --- */}
                 <div className="review-metric">
                     <i className="fas fa-chart-line"></i>
                     <span>Difficulty: {review.difficulty}/5</span>
@@ -47,30 +48,57 @@ const ReviewCard = ({ review }) => {
                     <i className="fas fa-smile"></i>
                     <span>Fun: {review.fun}/5</span>
                 </div>
-                <div className="review-metric">
-                    <i className="fas fa-graduation-cap"></i>
-                    <span>Grade: {review.grade}</span>
-                </div>
-                {/* NEW OPTIONAL FIELDS DISPLAY */}
+
+                {/* --- UPDATED: OPTIONAL FIELDS (DISPLAY CONDITIONALLY) --- */}
+                
+                {/* Grade Received */}
+                {review.grade && review.grade !== 'N/A' && (
+                    <div className="review-metric">
+                        <i className="fas fa-graduation-cap"></i>
+                        <span>Grade: {review.grade}</span>
+                    </div>
+                )}
+
+                {/* Did you pass */}
+                {review.passed && review.passed !== 'N/A' && (
+                    <div className="review-metric">
+                        <i className="fas fa-check"></i>
+                        <span>Passed: {review.passed}</span>
+                    </div>
+                )}
+
+                {/* Would take again */}
+                {review.wouldTakeAgain && review.wouldTakeAgain !== 'N/A' && (
+                    <div className="review-metric">
+                        <i className="fas fa-redo"></i>
+                        <span>Take Again: {review.wouldTakeAgain}</span>
+                    </div>
+                )}
+
+                {/* Required Attendance */}
                 {review.requireAttendance && review.requireAttendance !== 'N/A' && (
                     <div className="review-metric">
                         <i className="fas fa-calendar-check"></i>
                         <span>Attendance: {review.requireAttendance}</span>
                     </div>
                 )}
+
+                {/* Required Participation */}
                 {review.requireParticipation && review.requireParticipation !== 'N/A' && (
                     <div className="review-metric">
                         <i className="fas fa-users"></i>
                         <span>Participation: {review.requireParticipation}</span>
                     </div>
                 )}
+                
+                {/* Extra Cost */}
                 {review.extraCost && review.extraCost !== 'N/A' && (
                     <div className="review-metric">
                         <i className="fas fa-money-bill-wave"></i>
                         <span>Extra Cost: {review.extraCost}</span>
                     </div>
                 )}
-                {/* END NEW OPTIONAL FIELDS DISPLAY */}
+                {/* --- END OF UPDATED SECTION --- */}
             </div>
         </div>
     );

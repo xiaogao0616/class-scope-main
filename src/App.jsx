@@ -1,31 +1,53 @@
 // src/App.jsx
+
+// --- Imports ---
+// Import React and standard hooks (useState, useEffect, useCallback)
 import React, { useState, useEffect, useCallback } from 'react';
+// Import *local* course data and a utility function to get all courses
 import { courseData, getAllCourses } from './data';
+// Import reusable UI components
 import CourseCard from './components/CourseCard.jsx';
 import Notification from './components/Notification.jsx';
+// NEW: Define the base URL, same as in CourseDetail.jsx
+const API_BASE_URL = "http://127.0.0.1:8000";
 
+// --- Component Definition ---
+// Define the main component for the Homepage
 const App = () => {
+    
     // --- State Management (Replacing global variables & UI state from JS) ---
+    // Holds input from the "Popular Courses" search bar
     const [searchTerm, setSearchTerm] = useState({ subject: '', catalog: '' });
+    // Holds the selected university from the hero section
     const [selectedUniversity, setSelectedUniversity] = useState('University of North Carolina at Chapel Hill');
+    // Holds the list of courses to display in the "Popular Courses" grid
     const [displayedCourses, setDisplayedCourses] = useState([]);
+    // State to manage showing success/error notifications
     const [notification, setNotification] = useState({ message: '', type: '' });
     // NEW STATE: To control the expansion of individual optional fields
+    // Manages the open/closed state of optional accordions in the *homepage* review form
     const [expandedOptionalFields, setExpandedOptionalFields] = useState({});
     
+    // --- Constants and Utilities ---
     // UNC-CH key is hardcoded in original JS.
+    // Determines the key to use for accessing the local 'courseData' object
     const universityKey = selectedUniversity === "University of North Carolina at Chapel Hill" ? 'uncch' : selectedUniversity.toLowerCase();
 
     // Utility to clear notification
+    // Creates a memoized function to clear the notification state
     const clearNotification = useCallback(() => setNotification({ message: '', type: '' }), []);
 
     // Replaces loadSampleCourses & setupEventListeners from original JS
+    // --- Lifecycle Hook (On Mount) ---
+    // This useEffect hook runs *once* when the component mounts (empty dependency array [])
     useEffect(() => {
         // Load initial 6 popular courses on mount (from loadSampleCourses)
+        // Gets all courses from the *local* data and sets the first 6 to display
         const all = getAllCourses(courseData);
         setDisplayedCourses(all.slice(0, 6));
         
         // Setup range sliders (Replaces setupRangeSliders in dom.js)
+        // This function updates the "span" next to a range slider with its current value
         const handleRangeInput = (e) => {
             const span = e.target.parentElement.querySelector('.range-value');
             if (span) {
@@ -33,34 +55,41 @@ const App = () => {
             }
         };
 
+        // Find all range sliders on the page and attach the event listener
         const sliders = document.querySelectorAll('input[type="range"]');
         sliders.forEach(slider => slider.addEventListener('input', handleRangeInput));
         
         // Setup smooth scrolling event listeners (Replaces part of setupEventListeners in interaction.js)
+        // This handles clicks on anchor links (e.g., href="#courses")
         const anchors = document.querySelectorAll('a[href^="#"]');
         const clickHandler = (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Stop the default jump behavior
             const target = document.querySelector(e.currentTarget.getAttribute('href'));
+            // If the target element exists, scroll to it smoothly
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         };
+        // Attach the click handler to all anchor links
         anchors.forEach(anchor => anchor.addEventListener('click', clickHandler));
         
         // Cleanup function for event listeners
+        // This runs when the component unmounts to prevent memory leaks
         return () => {
             sliders.forEach(slider => slider.removeEventListener('input', handleRangeInput));
             anchors.forEach(anchor => anchor.removeEventListener('click', clickHandler));
         };
 
-    }, []);
+    }, []); // Empty array means this runs only once on mount
     
     // --- Data Filtering Logic (Replaces filterCourses from interaction.js) ---
+    // Memoized function to filter the *local* course data based on the 'searchTerm' state
     const filterCourses = useCallback(() => {
         const { subject, catalog } = searchTerm;
         const subjectTerm = subject.toUpperCase().trim();
         const catalogTerm = catalog.trim();
         
+        // If the university data doesn't exist, show no courses
         if (!courseData[universityKey]) {
             setDisplayedCourses([]);
             return;
@@ -69,12 +98,14 @@ const App = () => {
         let allCourses = [];
         const subjects = courseData[universityKey];
         
+        // If a subject is specified, filter by it. Otherwise, use all subjects.
         if (subjectTerm && subjects[subjectTerm]) {
             allCourses = subjects[subjectTerm];
         } else {
             allCourses = Object.values(subjects).flat();
         }
 
+        // Filter the courses based on subject and catalog terms
         const filtered = allCourses.filter(course => {
             const courseTitleUpper = course.title.toUpperCase().trim();
             const courseCodeUpper = course.code.toUpperCase().trim();
@@ -87,28 +118,34 @@ const App = () => {
 
         // Display only the first 6 for the "Popular Courses" section
         setDisplayedCourses(filtered.slice(0, 6)); 
-    }, [searchTerm, universityKey]);
+    }, [searchTerm, universityKey]); // Dependencies: Re-run if search or university changes
 
     // Run filter when search terms change (Replacing 'input' listeners)
+    // This useEffect hook triggers the filter function whenever 'searchTerm' changes
     useEffect(() => {
         filterCourses();
     }, [searchTerm, filterCourses]);
 
     // Replaces updateBrowseCatalogOptions from dom.js
+    // --- Utility Function ---
+    // Gets a list of valid course numbers for a given subject (used for datalists)
     const getCatalogOptions = (subjectCode) => {
         const subject = subjectCode.toUpperCase().trim();
+        // Check if the subject exists in the local data
         if (courseData[universityKey] && courseData[universityKey][subject]) {
+            // Map over the courses for that subject and extract the number
             return courseData[universityKey][subject].map(course => {
                 const parts = course.title.split(' ');
                 return parts.length > 1 ? parts[1] : null;
-            }).filter(Boolean);
+            }).filter(Boolean); // Filter out any null/invalid entries
         }
-        return [];
+        return []; // Return empty array if subject not found
     };
     
     // --- Interaction Handlers (Replacing functions from interaction.js) ---
 
     // Replaces browseCourses from interaction.js
+    // Handles clicking the "Browse Courses" button in the hero section
     const handleBrowseAllCourses = () => {
         if (!selectedUniversity) {
             alert('Please select a university first!');
@@ -116,64 +153,98 @@ const App = () => {
         }
         
         // This relies on the smooth scrolling effect from useEffect above
+        // Scrolls the user down to the #courses section
         document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         
+        // Get all courses from local data
         const allCourses = getAllCourses(courseData);
         // FIX APPLIED (from previous request): Ensure it displays only the popular 6 initially.
         setDisplayedCourses(allCourses.slice(0, 6)); 
     };
 
-    // Replaces searchCourses from interaction.js (FIXED: Added definition of fullCourseCode)
-    const handleSearchCourses = () => {
+    // Handles clicking the "Search" button in the "Popular Courses" section
+    const handleSearchCourses = async () => { // 1. Make the function async
         const subjectInput = document.getElementById("subjectSearch").value.toUpperCase().trim();
         const catalogInput = document.getElementById("catalogSearch").value.trim();
 
+        // 2. Basic validation (changed alert to notification)
         if (!subjectInput || !catalogInput) {
-            alert("Please enter both subject and catalog number.");
+            setNotification({ message: 'Please enter both subject and catalog number.', type: 'error' });
             return;
         }
 
-        // --- FIX APPLIED HERE: Define fullCourseCode before use ---
-        const fullCourseCode = subjectInput + " " + catalogInput; 
-        // -----------------------------------------------------------
-        
-        const coursesInSubject = courseData.uncch[subjectInput] || [];
-        
-        // Validation for course existence
-        const courseExists = coursesInSubject.some(course => course.title === fullCourseCode);
+        // 3. Get the selected school from state
+        const school = selectedUniversity; // 'selectedUniversity' is from useState
 
-        if (!courseExists) {
-            alert(`Error: The course "${fullCourseCode}" does not exist in our catalog for UNC-CH. Please check your subject and catalog number.`);
-            return;
+        // 4. Add try...catch block to handle the backend call
+        try {
+            // 5. Construct the URL for the validation/fetch endpoint
+            // We use the same endpoint as CourseDetail.jsx
+            const url = `${API_BASE_URL}/get_course_details?school=${encodeURIComponent(school)}&subject=${encodeURIComponent(subjectInput)}&courseNumber=${encodeURIComponent(catalogInput)}`;
+
+            // 6. Call the endpoint just to check if it exists
+            const response = await fetch(url);
+
+            // 7. Handle errors (e.g., 404 Not Found)
+            if (!response.ok) {
+                let errorMessage = "Failed to find course.";
+                try {
+                    // Try to get the specific error message from the backend
+                    const errorData = await response.json();
+                    if (errorData && errorData.detail) {
+                         errorMessage = errorData.detail; 
+                    } else if (response.status === 404) {
+                        // Fallback for a simple 404
+                        errorMessage = `Course ${subjectInput} ${catalogInput} was not found. Please check the subject and number.`;
+                    }
+                } catch (jsonError) {
+                    // If backend sent non-JSON error
+                    errorMessage = `Error: ${response.statusText}`;
+                }
+                // Throw an error to be caught by the catch block below
+                throw new Error(errorMessage); 
+            }
+
+            // 8. SUCCESS: If response.ok is true, the course is valid.
+            // Now we can safely redirect the user.
+            const fullCourseCode = subjectInput + " " + catalogInput; 
+            const courseCode = encodeURIComponent(fullCourseCode);
+            
+            // Navigate to the detail page
+            window.location.href = `?course=${courseCode}`;
+
+        } catch (error) {
+            // 9. CATCH: Show the error notification (e.g., "Course not found...")
+            console.error("Error checking course existence:", error);
+            setNotification({ message: error.message, type: 'error' });
+            // We DO NOT redirect if there's an error
         }
-
-        // If validation passes, proceed to detail page
-        const courseCode = encodeURIComponent(fullCourseCode);
-        
-        // Navigate to the detail page using the query string
-        window.location.href = `?course=${courseCode}`;
     };
 
+    // Handles clearing the review form on the homepage
     const handleClearForm = () => {
         const form = document.getElementById('reviewForm');
         if (form) {
-            form.reset();
+            form.reset(); // Reset all form fields
             // Manually reset range values and spans 
             document.querySelectorAll('#reviewForm input[type="range"]').forEach(input => input.value = '3');
             document.querySelectorAll('#reviewForm .range-value').forEach(span => span.textContent = '3');
-            setSearchTerm({ subject: '', catalog: '' }); // Reset search terms used in the form
+            // Reset the search term state (which is linked to the form's subject/catalog inputs)
+            setSearchTerm({ subject: '', catalog: '' }); 
             setExpandedOptionalFields({}); // Collapse all optional fields
         }
     };
 
     // Replaces submitReview from interaction.js
-    const handleSubmitReview = (e) => {
-        e.preventDefault();
+    // Handles submission of the review form on the *homepage*
+    const handleSubmitReview = async (e) => { // 1. Make the function async
+        e.preventDefault(); // Stop default form submission
         
         // Extracting form data using FormData
         const formData = new FormData(e.target);
         const formObj = Object.fromEntries(formData.entries());
         
+        // Destructure all fields from the form object
         const { 
             schoolSelect: school, 
             subjectInput: subject, 
@@ -188,12 +259,11 @@ const App = () => {
             passedClass: passed,
             wouldTakeAgain,
             extraCost,
-            // NEW FIELDS
             requireAttendance,
             requireParticipation
         } = formObj;
 
-        // Form Validation 
+        // Form Validation (Kept the simple 'is it empty?' checks)
         if (!school || !subject || !courseNumber) {
             setNotification({ message: 'Please fill in school, subject, and catalog number!', type: 'error' });
             return;
@@ -203,21 +273,16 @@ const App = () => {
             return;
         }
 
-        // Check if the course number is a valid option (mimics datalist validation from original JS)
-        const subjectCode = subject.toUpperCase().trim();
-        const validOptions = getCatalogOptions(subjectCode); 
-        
-        if (validOptions.length > 0 && !validOptions.includes(courseNumber)) {
-            setNotification({ message: `Invalid Catalog Number. Please select a valid number from the list for subject ${subjectCode}.`, type: 'error' });
-            return;
-        }
+        // --- 2. VALIDATION BLOCK REMOVED ---
+        // The old check against 'getCatalogOptions' and 'validOptions'
+        // is now gone. We trust the backend to do this.
         
         // Build review object for backend submission
         const review = {
             school,
             subject: subject.trim(),
             courseNumber,
-            professorName: null, 
+            professorName: null, // Professor not included in this form
             rating: parseInt(rating),
             reviewText: reviewText || null,
             difficulty: parseInt(difficulty),
@@ -234,29 +299,52 @@ const App = () => {
             requireParticipation: requireParticipation || null,
         };
 
-        // Send POST request to backend
-        fetch('http://localhost:8000/submit_review', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(review)
-        })
-        .then(response => {
-            if (!response.ok) throw new Error("Network response was not ok, status: " + response.status);
-            return response.json();
-        })
-        .then(() => {
+        // --- 3. ADDED TRY...CATCH BLOCK ---
+        try {
+            // Send POST request to backend
+            const response = await fetch(`${API_BASE_URL}/submit_review`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(review)
+            });
+
+            // --- 4. IMPROVED ERROR HANDLING ---
+            // Handle non-successful responses
+            if (!response.ok) {
+                let errorMessage = "Failed to submit review. Please check the server.";
+                // Try to parse a specific error message from the backend (e.g., { "detail": "Invalid course" })
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.detail) {
+                         errorMessage = errorData.detail;
+                    } else if (response.status === 404) {
+                        // Fallback for a simple 404
+                        errorMessage = `Course ${subject} ${courseNumber} was not found. Please check the subject and number.`;
+                    }
+                } catch (jsonError) {
+                    // Could not parse JSON, just use the status text
+                    errorMessage = `Error: ${response.statusText}`;
+                }
+                // Throw an error to be caught by the catch block
+                throw new Error(errorMessage);
+            }
+            
+            // If we are here, the response was successful
             setNotification({ message: 'Review submitted successfully! Thank you for your contribution.', type: 'success' });
             handleClearForm(); // Use the clear handler to reset everything
-        })
-        .catch(error => {
-            console.error('Error submitting review:', error);
-            setNotification({ message: 'Failed to submit review. Please ensure the backend is running and the fields are valid.', type: 'error' });
-        });
-    };
 
+        } catch (error) {
+            // Handle any errors during submission (network, or the error we threw)
+            console.error('Error submitting review:', error);
+            // This will now display the specific error from the backend
+            setNotification({ message: error.message, type: 'error' });
+        }
+    };
     // NEW HANDLER: Toggles individual optional fields
+    // Handles clicking on an optional field accordion in the homepage review form
     const handleToggleOptionalField = (e, fieldName) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent default button/link behavior
+        // Toggle the boolean value for the specific fieldName in the state
         setExpandedOptionalFields(prev => ({
             ...prev,
             [fieldName]: !prev[fieldName]
@@ -265,11 +353,15 @@ const App = () => {
 
 
     // --- Render (JSX replaces index.html body) ---
+    // This is the JSX that defines the HTML structure of the page
     return (
         <>
+            {/* 1. Notification Component */}
+            {/* Displays success/error messages */}
             <Notification message={notification.message} type={notification.type} clearNotification={clearNotification} />
             
-            {/* Nav Bar Component */}
+            {/* 2. Nav Bar Component */}
+            {/* Uses anchor links (e.g., #home, #courses) for smooth scrolling */}
             <nav className="navbar">
                 <div className="nav-container">
                     <div className="nav-logo">
@@ -282,6 +374,7 @@ const App = () => {
                         <a href="#upload" className="nav-link">Upload Review</a>
                         <a href="#about" className="nav-link">About</a>
                     </div>
+                    {/* Mobile menu toggle (functionality not fully implemented in this file) */}
                     <div className="nav-toggle">
                         <span className="bar"></span>
                         <span className="bar"></span>
@@ -290,7 +383,8 @@ const App = () => {
                 </div>
             </nav>
 
-            {/* Home/Hero Section */}
+            {/* 3. Home/Hero Section */}
+            {/* Contains the main headline, description, and university selector */}
             <section id="home" className="hero">
                 <div className="hero-container">
                     <div className="hero-content">
@@ -303,6 +397,7 @@ const App = () => {
                             Make informed decisions about your academic journey.
                         </p>
                         
+                        {/* University Selector and Browse Button */}
                         <div className="university-selector">
                             <div className="selector-container">
                                 <i className="fas fa-university"></i>
@@ -313,8 +408,8 @@ const App = () => {
                                     required 
                                     list="universityOptions" 
                                     autoComplete="off"
-                                    value={selectedUniversity}
-                                    onChange={(e) => setSelectedUniversity(e.target.value)}
+                                    value={selectedUniversity} // Controlled input
+                                    onChange={(e) => setSelectedUniversity(e.target.value)} // Update state on change
                                 />
                                 <datalist id="universityOptions">   
                                 <option value="University of North Carolina at Chapel Hill"></option>
@@ -328,8 +423,10 @@ const App = () => {
                     </div>
                     
                     {/* Floating Cards (Restored) */}
+                    {/* These are static decorative elements */}
                     <div className="hero-image">
                         <div className="floating-card card-1">
+                            {/* ... (Static content for card 1) ... */}
                             <div className="card-header">
                                 <div className="course-info">
                                     <h3>COMP 110</h3>
@@ -355,6 +452,7 @@ const App = () => {
                             </div>
                         </div>
                         <div className="floating-card card-2">
+                            {/* ... (Static content for card 2) ... */}
                             <div className="card-header">
                                 <div className="course-info">
                                     <h3>MATH 233</h3>
@@ -380,6 +478,7 @@ const App = () => {
                             </div>
                         </div>
                         <div className="floating-card card-3">
+                            {/* ... (Static content for card 3) ... */}
                             <div className="card-header">
                                 <div className="course-info">
                                     <h3>STOR 320</h3>
@@ -408,11 +507,13 @@ const App = () => {
                 </div>
             </section>
 
-            {/* Features Section */}
+            {/* 4. Features Section */}
+            {/* Static content describing the site's features */}
             <section className="features">
                 <div className="container">
                     <h2 className="section-title">Why Choose ClassScope?</h2>
                     <div className="features-grid">
+                        {/* ... (Static feature cards) ... */}
                         <div className="feature-card">
                             <div className="feature-icon">
                                 <i className="fas fa-star"></i>
@@ -445,10 +546,12 @@ const App = () => {
                 </div>
             </section>
 
-            {/* Course Browse Section */}
+            {/* 5. Course Browse Section */}
+            {/* Contains the search bar for courses and the grid of course cards */}
             <section id="courses" className="course-browse">
                 <div className="container">
                     <h2 className="section-title">Popular Courses</h2>
+                    {/* Search bar for filtering local courses */}
                     <div className="search-bar">
                         <i className="fas fa-search"></i>
                         <input 
@@ -458,13 +561,14 @@ const App = () => {
                             required 
                             list="SubjectList" 
                             autoComplete="off"
-                            value={searchTerm.subject}
+                            value={searchTerm.subject} // Controlled input from state
                             onChange={(e) => {
                                 // Clear catalog search when subject changes to update datalist
                                 setSearchTerm(prev => ({ ...prev, subject: e.target.value, catalog: '' }));
                             }}
                         />
                         {/* Subject Datalist (Restored) */}
+                        {/* Provides suggestions for the subject input */}
                         <datalist id="SubjectList">   
                             <option value="AAAD">African, African American and Diaspora Studies</option>
                             <option value="AMST">American Studies</option>
@@ -533,41 +637,41 @@ const App = () => {
                             required 
                             list="CatalogNumberList" 
                             autoComplete="off"
-                            value={searchTerm.catalog}
+                            value={searchTerm.catalog} // Controlled input from state
                             onChange={(e) => setSearchTerm(prev => ({ ...prev, catalog: e.target.value }))}
                         />
-                        {/* Dynamic Datalist Options */}
-                        <datalist id="CatalogNumberList">
-                            {getCatalogOptions(searchTerm.subject).map(number => (
-                                <option key={number} value={number} />
-                            ))}
-                        </datalist>
                         
+                        {/* This search button navigates to the detail page */}
                         <button className="search-btn" onClick={handleSearchCourses}>Search</button>
                     </div>
                     
                     {/* Display Courses */}
+                    {/* This grid maps over the 'displayedCourses' state */}
                     <div className="course-grid" id="courseGrid">
                         {displayedCourses.length > 0 ? (
+                            // If courses exist, map them to CourseCard components
                             displayedCourses.map(course => (
                                 <CourseCard key={course.id} course={course} />
                             ))
                         ) : (
+                            // Otherwise, show a fallback message
                             <div className="no-courses">No courses found matching your criteria.</div>
                         )}
                     </div>
                 </div>
             </section>
 
-            {/* Review Upload Section */}
+            {/* 6. Review Upload Section */}
+            {/* Contains the "Upload Review" form */}
             <section id="upload" className="upload-section">
                 <div className="container">
                     <h2 className="section-title">Help Other Students Choose</h2>
                     <div className="upload-container">
                         <div className="upload-form">
                             <h3>Your review could save someone's GPA</h3>
+                            {/* Form calls handleSubmitReview on submit */}
                             <form id="reviewForm" onSubmit={handleSubmitReview}>
-                                {/* ... existing form groups (School, Subject, Number, Rating) ... */}
+                                {/* --- Form Fields (School, Subject, Number, Rating) --- */}
                                 <div className="form-group">
                                     <label htmlFor="schoolSelect">School</label>
                                     <input name="schoolSelect" id="schoolSelect" placeholder="Select or search your school..." required list="universityOptions" autoComplete="off" />
@@ -584,6 +688,7 @@ const App = () => {
                                             list="subjectOptions" 
                                             autoComplete="off" 
                                             // Update subject search term to enable datalist updates
+                                            // This links this form's subject input to the 'searchTerm' state
                                             onChange={(e) => setSearchTerm(prev => ({...prev, subject: e.target.value}))}
                                         />
                                         {/* Subject Options (Restored) */}
@@ -654,22 +759,19 @@ const App = () => {
                                         required 
                                         list="UploadCatalogNumberList" 
                                         autoComplete="off"
-                                        value={searchTerm.catalog}
+                                        value={searchTerm.catalog} // Linked to 'searchTerm' state
                                         onChange={(e) => setSearchTerm(prev => ({...prev, catalog: e.target.value}))}
                                     />
-                                    {/* Dynamic Catalog Options */}
-                                    <datalist id="UploadCatalogNumberList">
-                                        {getCatalogOptions(searchTerm.subject).map(number => (
-                                            <option key={`upload-${number}`} value={number} />
-                                        ))}
-                                    </datalist>
+                    
                                 </div>
+                                {/* Overall Rating (Stars) */}
                                 <div className="form-group">
                                     <label htmlFor="rating">Overall Rating</label>
                                     <div className="rating-input">
                                         {/* No default checked star applied */}
                                         <input type="radio" name="rating" value="5" id="star5" />
                                         <label htmlFor="star5"><i className="fas fa-star"></i></label>
+                                        {/* ... (other star inputs) ... */}
                                         <input type="radio" name="rating" value="4" id="star4" />
                                         <label htmlFor="star4"><i className="fas fa-star"></i></label>
                                         <input type="radio" name="rating" value="3" id="star3" />
@@ -681,10 +783,11 @@ const App = () => {
                                     </div>
                                 </div>
                                 
-                                {/* DETAILED RATINGS (MANDATORY) */}
+                                {/* --- DETAILED RATINGS (MANDATORY) --- */}
+                                {/* Contains the range sliders for Difficulty, Workload, etc. */}
                                 <div className="rating-section">
                                     <h4>Detailed Ratings</h4>
-                                    {/* ... existing detailed ratings ... */}
+                                    {/* ... (existing detailed ratings) ... */}
                                     <div className="form-group">
                                         <label htmlFor="difficulty">Difficulty (1-5)</label>
                                         <div className="range-container">
@@ -692,6 +795,7 @@ const App = () => {
                                             <span className="range-value">3</span>
                                         </div>
                                     </div>
+                                    {/* ... (workload, usefulness, fun sliders) ... */}
                                     <div className="form-group">
                                         <label htmlFor="workload">Workload (1-5)</label>
                                         <div className="range-container">
@@ -715,15 +819,19 @@ const App = () => {
                                     </div>
                                 </div>
 
-                                {/* NEW: INDIVIDUAL OPTIONAL FIELDS */}
+                                {/* --- NEW: INDIVIDUAL OPTIONAL FIELDS --- */}
+                                {/* Each section is an accordion controlled by 'expandedOptionalFields' state */}
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
+                                    {/* The header toggles the state on click */}
                                     <div className={`optional-header ${expandedOptionalFields.grade ? 'expanded' : ''}`} 
                                          onClick={(e) => handleToggleOptionalField(e, 'grade')}>
-                                        Grade Received  <i className="fas fa-plus"></i>
+                                        Grade Received (Optional)  <i className="fas fa-plus"></i>
                                     </div>
+                                    {/* The content's visibility is controlled by the 'expanded' class */}
                                     <div className={`optional-content ${expandedOptionalFields.grade ? 'expanded' : ''}`}>
                                         <div className="form-group">
                                             <select name="gradeReceived" id="gradeReceived" defaultValue="">
+                                                {/* ... (grade options) ... */}
                                                 <option value="">Select grade</option>
                                                 <option value="A+">A+</option><option value="A">A</option><option value="A-">A-</option>
                                                 <option value="B+">B+</option><option value="B">B</option><option value="B-">B-</option>
@@ -735,9 +843,11 @@ const App = () => {
                                     </div>
                                 </div>
 
+                                {/* ... (Other optional sections: Pass, Take Again, Extra Cost, Attendance, Participation) ... */}
+                                {/* This is a repetitive pattern of accordions */}
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
                                     <div className={`optional-header ${expandedOptionalFields.pass ? 'expanded' : ''}`} onClick={(e) => handleToggleOptionalField(e, 'pass')}>
-                                        Did you pass?  <i className="fas fa-plus"></i>
+                                        Did you pass? (Optional)  <i className="fas fa-plus"></i>
                                     </div>
                                     <div className={`optional-content ${expandedOptionalFields.pass ? 'expanded' : ''}`}>
                                         <div className="form-group">
@@ -750,7 +860,7 @@ const App = () => {
 
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
                                     <div className={`optional-header ${expandedOptionalFields.takeAgain ? 'expanded' : ''}`} onClick={(e) => handleToggleOptionalField(e, 'takeAgain')}>
-                                        Would take again?  <i className="fas fa-plus"></i>
+                                        Would take again? (Optional)  <i className="fas fa-plus"></i>
                                     </div>
                                     <div className={`optional-content ${expandedOptionalFields.takeAgain ? 'expanded' : ''}`}>
                                         <div className="form-group">
@@ -763,7 +873,7 @@ const App = () => {
 
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
                                     <div className={`optional-header ${expandedOptionalFields.extraCost ? 'expanded' : ''}`} onClick={(e) => handleToggleOptionalField(e, 'extraCost')}>
-                                        Extra Cost?  <i className="fas fa-plus"></i>
+                                        Extra Cost? (Optional)  <i className="fas fa-plus"></i>
                                     </div>
                                     <div className={`optional-content ${expandedOptionalFields.extraCost ? 'expanded' : ''}`}>
                                         <div className="form-group">
@@ -776,7 +886,7 @@ const App = () => {
                                 
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
                                     <div className={`optional-header ${expandedOptionalFields.attendance ? 'expanded' : ''}`} onClick={(e) => handleToggleOptionalField(e, 'attendance')}>
-                                        Required Attendance?  <i className="fas fa-plus"></i>
+                                        Required Attendance? (Optional)  <i className="fas fa-plus"></i>
                                     </div>
                                     <div className={`optional-content ${expandedOptionalFields.attendance ? 'expanded' : ''}`}>
                                         <div className="form-group">
@@ -789,7 +899,7 @@ const App = () => {
 
                                 <div className={`optional-form-section ${expandedOptionalFields.grade ? 'expanded-section' : ''}`}>
                                     <div className={`optional-header ${expandedOptionalFields.participation ? 'expanded' : ''}`} onClick={(e) => handleToggleOptionalField(e, 'participation')}>
-                                        Required Participation?  <i className="fas fa-plus"></i>
+                                        Required Participation? (Optional)  <i className="fas fa-plus"></i>
                                     </div>
                                     <div className={`optional-content ${expandedOptionalFields.participation ? 'expanded' : ''}`}>
                                         <div className="form-group">
@@ -799,13 +909,15 @@ const App = () => {
                                         </div>
                                     </div>
                                 </div>
-                                {/* END NEW OPTIONAL SECTION */}
+                                {/* --- END NEW OPTIONAL SECTION --- */}
 
 
+                                {/* Review Text Area */}
                                 <div className="form-group">
                                     <label htmlFor="reviewText" style={{fontSize: '1.2rem', fontWeight: '600'}}>Your Personal Review</label>
                                     <textarea name="reviewText" id="reviewText" rows="4" placeholder="Share your thoughts about this course..."></textarea>
                                 </div>
+                                {/* Form Action Buttons */}
                                 <div className="form-actions">
                                     <button type="submit" className="submit-btn">
                                         <i className="fas fa-upload"></i>
@@ -821,10 +933,12 @@ const App = () => {
                 </div>
             </section>
 
-            {/* Footer Component */}
+            {/* 7. Footer Component */}
+            {/* Static footer with site links */}
             <footer className="footer">
                 <div className="container">
                     <div className="footer-content">
+                        {/* ... (Static footer sections) ... */}
                         <div className="footer-section">
                             <h3>ClassScope</h3>
                             <p>Empowering students with honest course reviews and ratings.</p>
@@ -855,4 +969,5 @@ const App = () => {
     );
 };
 
+// Export the component for use in other files
 export default App;

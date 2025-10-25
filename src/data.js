@@ -6,10 +6,6 @@
 export const courseData = { // <-- ADDED 'export'
         // *** UPDATED: UNC-CH sample course data with more subjects ***
     uncch: {
-        'AAAD': [
-            { id: 20, title: "AAAD 101", code: "Intro to African American Studies", professor: "N/A", rating: 4.3, difficulty: 2, workload: 3, description: "Introductory survey of African American intellectual and cultural history.", reviews: 150 },
-            { id: 21, title: "AAAD 386", code: "Black Cultures and Digital Media", professor: "N/A", rating: 4.6, difficulty: 3, workload: 3, description: "Examines the intersection of black cultures and digital technologies.", reviews: 80 }
-        ],
         'COMP': [
             { id: 10, title: "COMP 110", code: "Intro to Programming", professor: "Prof. X", rating: 4.8, difficulty: 3, workload: 3, description: "Fundamentals of programming using a modern language.", reviews: 1200 },
             { id: 11, title: "COMP 301", code: "Databases", professor: "Prof. Y", rating: 4.2, difficulty: 4, workload: 4, description: "Relational models and SQL.", reviews: 350 },

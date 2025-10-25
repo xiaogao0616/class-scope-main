@@ -47,7 +47,6 @@ const CourseCard = ({ course }) => {
                 </div>
             </div>
             <div className="course-meta">
-                <span><i className="fas fa-user"></i> {course.professor}</span>
                 <span><i className="fas fa-comments"></i> {course.reviews} reviews</span>
             </div>
             <div className="course-description">{course.description}</div>
